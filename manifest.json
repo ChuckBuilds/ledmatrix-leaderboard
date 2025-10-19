@@ -1,6 +1,7 @@
 {
   "id": "leaderboard",
   "name": "Sports Leaderboard",
+  "version": "1.0.2",
   "author": "ChuckBuilds",
   "description": "Displays scrolling leaderboards and standings for multiple sports leagues including NFL, NBA, MLB, NCAA Football, NCAA Basketball, and more",
   "category": "sports",
