@@ -4,16 +4,25 @@
   "description": "Displays scrolling leaderboards and standings for multiple sports leagues including NFL, NBA, MLB, NCAA Football, NCAA Basketball, and more",
   "author": "ChuckBuilds",
   "category": "sports",
-  "tags": ["leaderboard", "standings", "rankings", "sports", "nfl", "nba", "mlb", "ncaa", "scrolling"],
-  "repo": "https://github.com/ChuckBuilds/ledmatrix-plugins",
-  "branch": "main",
-  "plugin_path": "plugins/leaderboard",
+  "tags": [
+    "leaderboard",
+    "standings",
+    "rankings",
+    "sports",
+    "nfl",
+    "nba",
+    "mlb",
+    "ncaa",
+    "scrolling"
+  ],
+  "repo": "https://github.com/ChuckBuilds/ledmatrix-leaderboard",
+  "branch": "fix/update-interval-type-error",
+  "plugin_path": "",
   "versions": [
     {
       "version": "1.0.1",
       "ledmatrix_min": "2.0.0",
-      "released": "2025-10-12",
-      "download_url": "https://github.com/ChuckBuilds/ledmatrix-plugins/archive/refs/heads/main.zip"
+      "released": "2025-10-12"
     }
   ],
   "stars": 0,
@@ -28,5 +37,6 @@
     "managers": [
       "cache_manager"
     ]
-  }
+  },
+  "download_url_template": "https://github.com/ChuckBuilds/ledmatrix-leaderboard/archive/refs/tags/v{version}.zip"
 }
