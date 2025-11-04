@@ -137,21 +137,26 @@ class LeaderboardPlugin(BasePlugin):
     def display(self, force_clear: bool = False) -> None:
         """Display the scrolling leaderboard."""
         if not self.enabled:
+            self.logger.debug("Leaderboard plugin is disabled")
             return
         
         if not self.leaderboard_data:
             self.logger.warning("No leaderboard data available. Attempting to update...")
             self.update()
             if not self.leaderboard_data:
+                self.logger.warning("Still no data after update, showing fallback")
                 self._display_fallback_message()
                 return
         
         # Create scrolling image if needed
         if not self.scroll_helper.cached_image or force_clear:
+            self.logger.info("Creating leaderboard image...")
             self._create_leaderboard_image()
             if not self.scroll_helper.cached_image:
+                self.logger.error("Failed to create leaderboard image, showing fallback")
                 self._display_fallback_message()
                 return
+            self.logger.info("Leaderboard image created successfully")
         
         if force_clear:
             self.scroll_helper.reset_scroll()
