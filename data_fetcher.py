@@ -231,10 +231,13 @@ class DataFetcher:
             
             standings_url = league_config['standings_url']
             params = {
-                'season': league_config.get('season', 2025),
                 'level': league_config.get('level', 1),
                 'sort': league_config.get('sort', 'winpercent:desc,gamesbehind:asc')
             }
+            
+            # Only include season if explicitly provided - otherwise ESPN defaults to current season
+            if 'season' in league_config and league_config.get('season'):
+                params['season'] = league_config['season']
             
             response = requests.get(standings_url, params=params, timeout=self.request_timeout)
             response.raise_for_status()
@@ -272,9 +275,11 @@ class DataFetcher:
                 'standings': top_teams,
                 'timestamp': time.time(),
                 'league': league_key,
-                'season': params['season'],
                 'level': params['level']
             }
+            # Only include season in cache if it was explicitly provided
+            if 'season' in params:
+                cache_data['season'] = params['season']
             self.cache_manager.save_cache(cache_key, cache_data)
             
             self.logger.info(f"Fetched and cached {len(top_teams)} teams for {league_key}")

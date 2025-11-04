@@ -44,7 +44,7 @@ class LeagueConfig:
                 'standings_url': 'https://site.api.espn.com/apis/v2/sports/football/nfl/standings',
                 'enabled': self.enabled_sports.get('nfl', {}).get('enabled', False),
                 'top_teams': self.enabled_sports.get('nfl', {}).get('top_teams', 10),
-                'season': self.enabled_sports.get('nfl', {}).get('season', 2025),
+                'season': self.enabled_sports.get('nfl', {}).get('season'),  # Only include if explicitly set
                 'level': self.enabled_sports.get('nfl', {}).get('level', 1),
                 'sort': self.enabled_sports.get('nfl', {}).get('sort', 'winpercent:desc,gamesbehind:asc')
             },
@@ -66,7 +66,7 @@ class LeagueConfig:
                 'standings_url': 'https://site.api.espn.com/apis/v2/sports/baseball/mlb/standings',
                 'enabled': self.enabled_sports.get('mlb', {}).get('enabled', False),
                 'top_teams': self.enabled_sports.get('mlb', {}).get('top_teams', 10),
-                'season': self.enabled_sports.get('mlb', {}).get('season', 2025),
+                'season': self.enabled_sports.get('mlb', {}).get('season'),  # Only include if explicitly set
                 'level': self.enabled_sports.get('mlb', {}).get('level', 1),
                 'sort': self.enabled_sports.get('mlb', {}).get('sort', 'winpercent:desc,gamesbehind:asc')
             },
@@ -89,7 +89,7 @@ class LeagueConfig:
                 'standings_url': 'https://site.api.espn.com/apis/v2/sports/hockey/nhl/standings',
                 'enabled': self.enabled_sports.get('nhl', {}).get('enabled', False),
                 'top_teams': self.enabled_sports.get('nhl', {}).get('top_teams', 10),
-                'season': self.enabled_sports.get('nhl', {}).get('season', 2025),
+                'season': self.enabled_sports.get('nhl', {}).get('season'),  # Only include if explicitly set
                 'level': self.enabled_sports.get('nhl', {}).get('level', 1),
                 'sort': self.enabled_sports.get('nhl', {}).get('sort', 'winpercent:desc,gamesbehind:asc')
             },
@@ -120,7 +120,7 @@ class LeagueConfig:
                 'scoreboard_url': 'https://site.api.espn.com/apis/site/v2/sports/baseball/college-baseball/scoreboard',
                 'enabled': self.enabled_sports.get('ncaa_baseball', {}).get('enabled', False),
                 'top_teams': self.enabled_sports.get('ncaa_baseball', {}).get('top_teams', 25),
-                'season': self.enabled_sports.get('ncaa_baseball', {}).get('season', 2025),
+                'season': self.enabled_sports.get('ncaa_baseball', {}).get('season'),  # Only include if explicitly set
                 'level': self.enabled_sports.get('ncaa_baseball', {}).get('level', 1),
                 'sort': self.enabled_sports.get('ncaa_baseball', {}).get('sort', 'winpercent:desc,gamesbehind:asc')
             },
