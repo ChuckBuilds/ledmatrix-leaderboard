@@ -223,8 +223,11 @@ class DataFetcher:
         
         cached_data = self.cache_manager.get_cached_data_with_strategy(cache_key, 'leaderboard')
         if cached_data:
-            self.logger.info(f"Using cached standings data for {league_key}")
-            return cached_data.get('standings', [])
+            cached_standings = cached_data.get('standings', [])
+            self.logger.info(f"Using cached standings data for {league_key}: {len(cached_standings)} teams found")
+            if len(cached_standings) == 0:
+                self.logger.warning(f"Cached data for {league_key} has 0 teams - this may indicate a caching issue")
+            return cached_standings
         
         try:
             self.logger.info(f"Fetching fresh standings data for {league_key}")
@@ -246,29 +249,53 @@ class DataFetcher:
             increment_api_counter('sports', 1)
             
             standings = []
+            combined_from_multiple_sources = False
             
             # Parse standings structure
             if 'standings' in data and 'entries' in data['standings']:
-                # Direct standings
+                # Direct standings - API already returns these sorted by the 'sort' parameter
                 entries = data['standings']['entries']
+                self.logger.info(f"Found {len(entries)} entries in direct standings for {league_key}")
                 for entry in entries:
                     standing = self._extract_team_standing(entry, league_key)
                     if standing:
                         standings.append(standing)
+                self.logger.info(f"Extracted {len(standings)} standings from {len(entries)} entries for {league_key}")
+                # API already sorted these, so we trust the order
             elif 'children' in data:
-                # Children structure (divisions/conferences)
-                for child in data.get('children', []):
+                # Children structure (divisions/conferences) - need to combine and re-sort
+                children = data.get('children', [])
+                self.logger.info(f"Found {len(children)} children in standings data for {league_key}")
+                total_entries = 0
+                for child in children:
                     entries = child.get('standings', {}).get('entries', [])
+                    total_entries += len(entries)
                     for entry in entries:
                         standing = self._extract_team_standing(entry, league_key)
                         if standing:
                             standings.append(standing)
+                self.logger.info(f"Extracted {len(standings)} standings from {total_entries} total entries across {len(children)} children for {league_key}")
+                # When combining from multiple divisions/conferences, we need to re-sort
+                combined_from_multiple_sources = len(children) > 1
             else:
-                self.logger.warning(f"No standings data found for {league_key}")
+                self.logger.warning(f"No standings data found for {league_key} - response keys: {list(data.keys())}")
+                # Log a sample of the response structure for debugging
+                self.logger.debug(f"Response structure sample: {str(data)[:500]}")
                 return []
             
-            # Sort by win percentage and limit
-            standings.sort(key=lambda x: x['win_percentage'], reverse=True)
+            if len(standings) == 0:
+                self.logger.error(f"0 teams found in standings data for {league_key} after extraction")
+                self.logger.error(f"This indicates a problem with the API response structure or extraction logic")
+                return []
+            
+            # ESPN API already returns data sorted by the 'sort' parameter (winpercent:desc,gamesbehind:asc)
+            # For direct standings, trust the API order. Only re-sort when combining from multiple divisions/conferences
+            if combined_from_multiple_sources:
+                self.logger.debug(f"Re-sorting {len(standings)} teams from multiple divisions/conferences")
+                standings.sort(key=lambda x: x['win_percentage'], reverse=True)
+            else:
+                self.logger.debug(f"Trusting API sort order for {len(standings)} teams")
+            
             top_teams = standings[:league_config.get('top_teams', 10)]
             
             cache_data = {
@@ -282,7 +309,7 @@ class DataFetcher:
                 cache_data['season'] = params['season']
             self.cache_manager.save_cache(cache_key, cache_data)
             
-            self.logger.info(f"Fetched and cached {len(top_teams)} teams for {league_key}")
+            self.logger.info(f"Fetched and cached {len(top_teams)} teams for {league_key} (from {len(standings)} total standings)")
             return top_teams
             
         except Exception as e:
@@ -358,54 +385,66 @@ class DataFetcher:
     
     def _extract_team_standing(self, entry: Dict, league_key: str) -> Optional[Dict[str, Any]]:
         """Extract team standing from API entry."""
-        team_data = entry.get('team', {})
-        stats = entry.get('stats', [])
-        
-        team_name = team_data.get('displayName', 'Unknown')
-        team_abbr = team_data.get('abbreviation', 'Unknown')
-        team_id = team_data.get('id')
-        
-        wins = 0
-        losses = 0
-        ties = 0
-        win_percentage = 0.0
-        games_played = 0
-        
-        for stat in stats:
-            stat_type = stat.get('type', '')
-            stat_value = stat.get('value', 0)
+        try:
+            team_data = entry.get('team', {})
+            stats = entry.get('stats', [])
             
-            if stat_type == 'wins':
-                wins = int(stat_value)
-            elif stat_type == 'losses':
-                losses = int(stat_value)
-            elif stat_type == 'ties':
-                ties = int(stat_value)
-            elif stat_type == 'winpercent':
-                win_percentage = float(stat_value)
-            elif stat_type == 'overtimelosses' and league_key == 'nhl':
-                ties = int(stat_value)
-            elif stat_type == 'gamesplayed' and league_key == 'nhl':
-                games_played = float(stat_value)
-        
-        if league_key == 'nhl' and win_percentage == 0.0 and games_played > 0:
-            win_percentage = wins / games_played
-        
-        if ties > 0:
-            record_summary = f"{wins}-{losses}-{ties}"
-        else:
-            record_summary = f"{wins}-{losses}"
-        
-        return {
-            'name': team_name,
-            'id': team_id,
-            'abbreviation': team_abbr,
-            'wins': wins,
-            'losses': losses,
-            'ties': ties,
-            'win_percentage': win_percentage,
-            'record_summary': record_summary
-        }
+            if not team_data:
+                self.logger.warning(f"Entry missing 'team' data: {entry.keys()}")
+                return None
+            
+            team_name = team_data.get('displayName', 'Unknown')
+            team_abbr = team_data.get('abbreviation', 'Unknown')
+            team_id = team_data.get('id')
+            
+            if not team_abbr or team_abbr == 'Unknown':
+                self.logger.warning(f"Team missing abbreviation: {team_data}")
+                # Still return the standing, but log the issue
+            
+            wins = 0
+            losses = 0
+            ties = 0
+            win_percentage = 0.0
+            games_played = 0
+            
+            for stat in stats:
+                stat_type = stat.get('type', '')
+                stat_value = stat.get('value', 0)
+                
+                if stat_type == 'wins':
+                    wins = int(stat_value)
+                elif stat_type == 'losses':
+                    losses = int(stat_value)
+                elif stat_type == 'ties':
+                    ties = int(stat_value)
+                elif stat_type == 'winpercent':
+                    win_percentage = float(stat_value)
+                elif stat_type == 'overtimelosses' and league_key == 'nhl':
+                    ties = int(stat_value)
+                elif stat_type == 'gamesplayed' and league_key == 'nhl':
+                    games_played = float(stat_value)
+            
+            if league_key == 'nhl' and win_percentage == 0.0 and games_played > 0:
+                win_percentage = wins / games_played
+            
+            if ties > 0:
+                record_summary = f"{wins}-{losses}-{ties}"
+            else:
+                record_summary = f"{wins}-{losses}"
+            
+            return {
+                'name': team_name,
+                'id': team_id,
+                'abbreviation': team_abbr,
+                'wins': wins,
+                'losses': losses,
+                'ties': ties,
+                'win_percentage': win_percentage,
+                'record_summary': record_summary
+            }
+        except Exception as e:
+            self.logger.error(f"Error extracting team standing: {e}, entry keys: {list(entry.keys()) if isinstance(entry, dict) else 'not a dict'}")
+            return None
     
     def _fetch_team_record(self, team_abbr: str, league_config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Fetch individual team record from ESPN API with caching."""
