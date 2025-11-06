@@ -96,10 +96,28 @@ class DataFetcher:
                 self.logger.warning("No rankings data found")
                 return []
             
-            # Use the first ranking (usually AP Top 25)
-            first_ranking = rankings_data[0]
-            ranking_name = first_ranking.get('name', 'Unknown')
-            teams = first_ranking.get('ranks', [])
+            # Prefer AP Top 25, but fall back to first ranking if not found
+            selected_ranking = None
+            ranking_name = 'Unknown'
+            
+            # Look for AP Top 25 specifically
+            for ranking in rankings_data:
+                name = ranking.get('name', '').lower()
+                ranking_type = ranking.get('type', '').lower()
+                # Check for AP Top 25 by name or type
+                if ('ap' in name and 'top' in name) or ranking_type == 'ap':
+                    selected_ranking = ranking
+                    ranking_name = ranking.get('name', 'AP Top 25')
+                    self.logger.info(f"Found AP Top 25 ranking: {ranking_name}")
+                    break
+            
+            # Fall back to first ranking if AP Top 25 not found
+            if not selected_ranking:
+                selected_ranking = rankings_data[0]
+                ranking_name = selected_ranking.get('name', 'Unknown')
+                self.logger.warning(f"AP Top 25 not found, using first available ranking: {ranking_name}")
+            
+            teams = selected_ranking.get('ranks', [])
             
             self.logger.info(f"Using ranking: {ranking_name}, found {len(teams)} teams")
             
@@ -171,9 +189,12 @@ class DataFetcher:
                 self.logger.warning("No rankings data found")
                 return []
             
-            first_ranking = rankings_data[0]
-            ranking_name = first_ranking.get('name', 'Unknown')
-            teams = first_ranking.get('ranks', [])
+            # Prefer first ranking (usually the main poll), but could be enhanced to prefer specific polls
+            selected_ranking = rankings_data[0]
+            ranking_name = selected_ranking.get('name', 'Unknown')
+            teams = selected_ranking.get('ranks', [])
+            
+            self.logger.info(f"Using ranking: {ranking_name}, found {len(teams)} teams")
             
             standings = []
             for team_data in teams:
