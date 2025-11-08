@@ -47,18 +47,6 @@
           "maximum": 20,
           "description": "Scroll speed scale factor"
         },
-        "display_duration": {
-          "type": "integer",
-          "default": 60,
-          "minimum": 10,
-          "maximum": 300,
-          "description": "Display duration in seconds"
-        },
-        "loop": {
-          "type": "boolean",
-          "default": false,
-          "description": "Continuously loop the leaderboard"
-        },
         "request_timeout": {
           "type": "integer",
           "default": 30,
@@ -141,45 +129,6 @@
           "type": "boolean",
           "default": false,
           "description": "Continuously loop the leaderboard"
-        },
-        "background_service": {
-          "type": "object",
-          "properties": {
-            "enabled": {
-              "type": "boolean",
-              "default": true,
-              "description": "Enable background data fetching"
-            },
-            "max_workers": {
-              "type": "integer",
-              "default": 3,
-              "minimum": 1,
-              "maximum": 10,
-              "description": "Maximum number of worker threads"
-            },
-            "request_timeout": {
-              "type": "integer",
-              "default": 30,
-              "minimum": 5,
-              "maximum": 120,
-              "description": "Request timeout in seconds"
-            },
-            "max_retries": {
-              "type": "integer",
-              "default": 3,
-              "minimum": 1,
-              "maximum": 10,
-              "description": "Maximum number of retries for failed requests"
-            },
-            "priority": {
-              "type": "integer",
-              "default": 2,
-              "minimum": 1,
-              "maximum": 5,
-              "description": "Background service priority"
-            }
-          },
-          "additionalProperties": false
         }
       },
       "additionalProperties": false
