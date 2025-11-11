@@ -182,6 +182,14 @@ class LeaderboardPlugin(BasePlugin):
         # Update scroll position using the scroll helper
         self.scroll_helper.update_scroll_position()
         if self.dynamic_duration_enabled and self.scroll_helper.is_scroll_complete():
+            if not self._cycle_complete:
+                scroll_info = self.scroll_helper.get_scroll_info()
+                elapsed_time = scroll_info.get('elapsed_time')
+                self.logger.info(
+                    "Leaderboard scroll cycle completed (elapsed=%.2fs, target=%.2fs)",
+                    elapsed_time if elapsed_time is not None else -1.0,
+                    scroll_info.get('dynamic_duration'),
+                )
             self._cycle_complete = True
         
         # Get visible portion
