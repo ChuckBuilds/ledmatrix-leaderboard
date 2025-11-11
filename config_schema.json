@@ -55,37 +55,79 @@
           "description": "Request timeout in seconds"
         },
         "dynamic_duration": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable dynamic duration based on content width"
+          "type": "object",
+          "description": "Dynamic duration settings for synchronising display time with content width",
+          "default": {
+            "enabled": true,
+            "min_duration_seconds": 45,
+            "max_duration_seconds": 600,
+            "buffer_ratio": 0.1,
+            "controller_cap_seconds": 600
+          },
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable dynamic duration based on content width"
+            },
+            "min_duration_seconds": {
+              "type": "integer",
+              "default": 45,
+              "minimum": 10,
+              "maximum": 300,
+              "description": "Minimum display duration when dynamic duration is enabled"
+            },
+            "max_duration_seconds": {
+              "type": "integer",
+              "default": 600,
+              "minimum": 30,
+              "maximum": 1200,
+              "description": "Maximum display duration when dynamic duration is enabled"
+            },
+            "buffer_ratio": {
+              "type": "number",
+              "default": 0.1,
+              "minimum": 0.01,
+              "maximum": 1.0,
+              "description": "Extra buffer applied to the calculated duration (percentage expressed as 0-1)"
+            },
+            "controller_cap_seconds": {
+              "type": "integer",
+              "default": 600,
+              "minimum": 60,
+              "maximum": 1800,
+              "description": "Failsafe cap for the display controller when dynamic duration is enabled"
+            }
+          },
+          "additionalProperties": false
         },
         "min_duration": {
           "type": "integer",
           "default": 45,
           "minimum": 10,
           "maximum": 300,
-          "description": "Minimum display duration when dynamic duration is enabled"
+          "description": "[Deprecated] Use dynamic_duration.min_duration_seconds instead."
         },
         "max_duration": {
           "type": "integer",
           "default": 600,
           "minimum": 30,
           "maximum": 1200,
-          "description": "Maximum display duration when dynamic duration is enabled"
+          "description": "[Deprecated] Use dynamic_duration.max_duration_seconds instead."
         },
         "duration_buffer": {
           "type": "number",
           "default": 0.1,
           "minimum": 0.01,
           "maximum": 1.0,
-          "description": "Duration buffer for dynamic duration calculation"
+          "description": "[Deprecated] Use dynamic_duration.buffer_ratio instead."
         },
         "max_display_time": {
           "type": "integer",
           "default": 600,
           "minimum": 60,
           "maximum": 1800,
-          "description": "Maximum display time in seconds"
+          "description": "[Deprecated] Use dynamic_duration.controller_cap_seconds instead."
         },
         "scroll_pixels_per_second": {
           "type": "number",
