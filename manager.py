@@ -208,23 +208,20 @@ class LeaderboardPlugin(BasePlugin):
             leaderboard_image = self.image_renderer.create_leaderboard_image(self.leaderboard_data)
             
             if leaderboard_image:
-                # Set up scroll helper with the image
-                self.scroll_helper.cached_image = leaderboard_image
-                self.scroll_helper.total_scroll_width = leaderboard_image.width
-                
-                # Calculate dynamic duration
-                self.scroll_helper._calculate_dynamic_duration()
+                # Set up scroll helper with the image (properly initializes cached_array and state)
+                self.scroll_helper.set_scrolling_image(leaderboard_image)
+                # Dynamic duration is automatically calculated by set_scrolling_image()
                 self._cycle_complete = False
                 
                 self.logger.info(f"Created leaderboard image: {leaderboard_image.width}x{leaderboard_image.height}")
                 self.logger.info(f"Dynamic duration: {self.scroll_helper.get_dynamic_duration()}s")
             else:
                 self.logger.error("Failed to create leaderboard image")
-                self.scroll_helper.cached_image = None
+                self.scroll_helper.clear_cache()
                 
         except Exception as e:
             self.logger.error(f"Error creating leaderboard image: {e}")
-            self.scroll_helper.cached_image = None
+            self.scroll_helper.clear_cache()
     
     def _display_fallback_message(self) -> None:
         """Display a fallback message when no data is available."""
