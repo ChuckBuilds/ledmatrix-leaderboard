@@ -9,6 +9,55 @@
       "default": false,
       "description": "Enable or disable the leaderboard plugin"
     },
+    "display_duration": {
+      "type": "number",
+      "default": 30,
+      "minimum": 10,
+      "maximum": 300,
+      "description": "How long to display the leaderboard in seconds"
+    },
+    "live_priority": {
+      "type": "boolean",
+      "default": false,
+      "description": "Enable live priority takeover when plugin has live content"
+    },
+    "high_performance_transitions": {
+      "type": "boolean",
+      "default": false,
+      "description": "Use high-performance transitions (120 FPS) instead of standard (30 FPS)"
+    },
+    "update_interval": {
+      "type": "integer",
+      "default": 3600,
+      "minimum": 300,
+      "maximum": 86400,
+      "description": "How often to fetch new leaderboard data in seconds"
+    },
+    "transition": {
+      "type": "object",
+      "description": "Transition configuration for this plugin",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["redraw", "fade", "slide", "wipe", "dissolve", "pixelate"],
+          "default": "redraw",
+          "description": "Type of transition to use"
+        },
+        "speed": {
+          "type": "integer",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Transition speed (1=slow, 10=fast)"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable transitions"
+        }
+      },
+      "additionalProperties": false
+    },
     "global": {
       "type": "object",
       "properties": {
@@ -18,13 +67,6 @@
           "minimum": 10,
           "maximum": 300,
           "description": "Duration in seconds to display the leaderboard"
-        },
-        "update_interval": {
-          "type": "integer",
-          "default": 3600,
-          "minimum": 300,
-          "maximum": 86400,
-          "description": "How often to fetch new leaderboard data (seconds)"
         },
         "scroll_speed": {
           "type": "number",
