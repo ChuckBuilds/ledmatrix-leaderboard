@@ -88,6 +88,8 @@ class LeaderboardPlugin(BasePlugin):
         # State
         self.leaderboard_data = []
         self.last_update = 0
+        self.last_warning_time = 0
+        self.warning_cooldown = 300  # Only warn once every 5 minutes if data is unavailable
         
         # Enable scrolling for high FPS
         self.enable_scrolling = True
@@ -107,25 +109,47 @@ class LeaderboardPlugin(BasePlugin):
             self.dynamic_duration_cap,
         )
         self._cycle_complete = False
+        
+        # Attempt initial data fetch (will use cached data if available)
+        if enabled_leagues:
+            self.logger.info("Attempting initial data fetch...")
+            self.update(force=True)
+        else:
+            self.logger.warning("No leagues are enabled - leaderboard will not display any data")
     
-    def update(self) -> None:
-        """Update standings data for all enabled leagues."""
+    def update(self, force: bool = False) -> None:
+        """
+        Update standings data for all enabled leagues.
+        
+        Args:
+            force: If True, bypass the time check and force an update
+        """
         current_time = time.time()
         
-        # Check if it's time to update
-        if current_time - self.last_update < self.update_interval:
+        # Check if it's time to update (unless forced)
+        if not force and current_time - self.last_update < self.update_interval:
+            self.logger.debug(f"Skipping update - only {current_time - self.last_update:.1f}s since last update (interval: {self.update_interval}s)")
             return
         
         try:
-            self.logger.info("Updating leaderboard data")
+            self.logger.info(f"Updating leaderboard data (force={force})")
             self.leaderboard_data = []
             
             # Fetch standings for each enabled league
-            for league_key in self.league_config.get_enabled_leagues():
+            enabled_leagues = self.league_config.get_enabled_leagues()
+            if not enabled_leagues:
+                self.logger.warning("No leagues are enabled in configuration")
+                return
+            
+            self.logger.info(f"Fetching data for {len(enabled_leagues)} enabled league(s): {enabled_leagues}")
+            
+            for league_key in enabled_leagues:
                 league_config = self.league_config.get_league_config(league_key)
                 if not league_config:
+                    self.logger.warning(f"No configuration found for league: {league_key}")
                     continue
                 
+                self.logger.debug(f"Fetching standings for {league_key}")
                 standings = self.data_fetcher.fetch_standings(league_config)
                 
                 if standings:
@@ -134,17 +158,24 @@ class LeaderboardPlugin(BasePlugin):
                         'league_config': league_config,
                         'teams': standings
                     })
+                    self.logger.info(f"Successfully fetched {len(standings)} teams for {league_key}")
+                else:
+                    self.logger.warning(f"No standings data returned for {league_key}")
             
             self.last_update = current_time
             
             # Clear scroll cache when data updates
             self.scroll_helper.clear_cache()
             
+            total_teams = sum(len(d['teams']) for d in self.leaderboard_data)
             self.logger.info(f"Updated standings data: {len(self.leaderboard_data)} leagues, "
-                           f"{sum(len(d['teams']) for d in self.leaderboard_data)} total teams")
+                           f"{total_teams} total teams")
+            
+            if not self.leaderboard_data:
+                self.logger.error("No leaderboard data was fetched after attempting to update all enabled leagues")
             
         except Exception as e:
-            self.logger.error(f"Error updating leaderboard data: {e}")
+            self.logger.error(f"Error updating leaderboard data: {e}", exc_info=True)
     
     def display(self, force_clear: bool = False) -> None:
         """Display the scrolling leaderboard."""
@@ -153,10 +184,18 @@ class LeaderboardPlugin(BasePlugin):
             return
         
         if not self.leaderboard_data:
-            self.logger.warning("No leaderboard data available. Attempting to update...")
-            self.update()
+            current_time = time.time()
+            should_warn = (current_time - self.last_warning_time) >= self.warning_cooldown
+            
+            if should_warn:
+                self.logger.warning("No leaderboard data available. Attempting to force update...")
+                self.last_warning_time = current_time
+            
+            self.update(force=True)
             if not self.leaderboard_data:
-                self.logger.warning("Still no data after update, showing fallback")
+                if should_warn:
+                    self.logger.warning("Still no data after forced update, showing fallback")
+                    self.logger.debug("Will check again on next display() call - warning suppressed for 5 minutes")
                 self._display_fallback_message()
                 return
         
