@@ -89,7 +89,9 @@ class LeaderboardPlugin(BasePlugin):
         self.leaderboard_data = []
         self.last_update = 0
         self.last_warning_time = 0
+        self.last_no_leagues_warning_time = 0
         self.warning_cooldown = 300  # Only warn once every 5 minutes if data is unavailable
+        self.no_leagues_warning_cooldown = 300  # Only warn once every 5 minutes about no leagues enabled
         
         # Enable scrolling for high FPS
         self.enable_scrolling = True
@@ -138,7 +140,11 @@ class LeaderboardPlugin(BasePlugin):
             # Fetch standings for each enabled league
             enabled_leagues = self.league_config.get_enabled_leagues()
             if not enabled_leagues:
-                self.logger.warning("No leagues are enabled in configuration")
+                # Rate limit warning to avoid log spam
+                current_time = time.time()
+                if (current_time - self.last_no_leagues_warning_time) >= self.no_leagues_warning_cooldown:
+                    self.logger.warning("No leagues are enabled in configuration")
+                    self.last_no_leagues_warning_time = current_time
                 return
             
             self.logger.info(f"Fetching data for {len(enabled_leagues)} enabled league(s): {enabled_leagues}")
