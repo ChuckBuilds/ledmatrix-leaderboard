@@ -195,7 +195,7 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "default": true,
+              "default": false,
               "description": "Enable NFL standings"
             },
             "top_teams": {
@@ -308,7 +308,7 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "default": true,
+              "default": false,
               "description": "Enable NCAA Men's Hockey rankings"
             },
             "top_teams": {
