@@ -54,8 +54,25 @@ class LeaderboardPlugin(BasePlugin):
         
         # Display settings
         self.display_duration = self.global_config.get('display_duration', 30)
-        self.scroll_speed = self.global_config.get('scroll_pixels_per_second', 15.0)
-        self.scroll_delay = self.global_config.get('scroll_delay', 0.01)
+        
+        # Scroll speed configuration - prefer display object (granular control), fallback to scroll_pixels_per_second for backward compatibility
+        display_config = self.global_config.get('display', {})
+        if display_config and ('scroll_speed' in display_config or 'scroll_delay' in display_config):
+            # New format: use display object for granular control
+            self.scroll_speed = display_config.get('scroll_speed', 1.0)
+            self.scroll_delay = display_config.get('scroll_delay', 0.01)
+            self.scroll_pixels_per_second = None  # Not using pixels per second mode
+            self.logger.info(f"Using global.display.scroll_speed={self.scroll_speed} px/frame, global.display.scroll_delay={self.scroll_delay}s (frame-based mode)")
+        else:
+            # Old format: use scroll_pixels_per_second (backward compatibility)
+            self.scroll_pixels_per_second = self.global_config.get('scroll_pixels_per_second', 15.0)
+            self.scroll_delay = self.global_config.get('scroll_delay', 0.01)
+            if self.scroll_pixels_per_second is not None:
+                self.logger.info(f"Using scroll_pixels_per_second={self.scroll_pixels_per_second} px/s (time-based mode, backward compatibility)")
+            else:
+                # Calculate from legacy scroll_speed/scroll_delay
+                self.scroll_speed = self.global_config.get('scroll_speed', 1)
+                self.logger.info(f"Using legacy scroll_speed={self.scroll_speed}, scroll_delay={self.scroll_delay} (backward compatibility)")
         self.dynamic_duration_settings = self._load_dynamic_duration_settings(
             self.global_config.get('dynamic_duration')
         )
@@ -76,8 +93,48 @@ class LeaderboardPlugin(BasePlugin):
         
         # Initialize scroll helper
         self.scroll_helper = ScrollHelper(self.display_width, self.display_height, self.logger)
-        self.scroll_helper.set_scroll_speed(self.scroll_speed)
-        self.scroll_helper.set_scroll_delay(self.scroll_delay)
+        
+        # Configure ScrollHelper with plugin settings
+        # Check if we should use frame-based scrolling (new format) or time-based (old format)
+        use_frame_based = (self.scroll_pixels_per_second is None and 
+                          display_config and 
+                          ('scroll_speed' in display_config or 'scroll_delay' in display_config))
+        
+        if use_frame_based:
+            # New format: use frame-based scrolling for finer control
+            if hasattr(self.scroll_helper, 'set_frame_based_scrolling'):
+                self.scroll_helper.set_frame_based_scrolling(True)
+                self.logger.info(f"Frame-based scrolling enabled: {self.scroll_speed} px/frame, {self.scroll_delay}s delay")
+            # In frame-based mode, scroll_speed is pixels per frame
+            self.scroll_helper.set_scroll_speed(self.scroll_speed)
+            self.scroll_helper.set_scroll_delay(self.scroll_delay)
+            # Log effective pixels per second for reference
+            pixels_per_second = self.scroll_speed / self.scroll_delay if self.scroll_delay > 0 else self.scroll_speed * 100
+            self.logger.info(f"Effective scroll speed: {pixels_per_second:.1f} px/s ({self.scroll_speed} px/frame at {1.0/self.scroll_delay:.0f} FPS)")
+        else:
+            # Old format: use time-based scrolling (backward compatibility)
+            if self.scroll_pixels_per_second is not None:
+                pixels_per_second = self.scroll_pixels_per_second
+                self.logger.info(f"Using scroll_pixels_per_second: {pixels_per_second} px/s (time-based mode)")
+            else:
+                # Convert scroll_speed from pixels per frame to pixels per second (backward compatibility)
+                pixels_per_second = self.scroll_speed / self.scroll_delay if self.scroll_delay > 0 else self.scroll_speed * 100
+                self.logger.info(f"Calculated scroll speed: {pixels_per_second} px/s (from scroll_speed={self.scroll_speed}, scroll_delay={self.scroll_delay})")
+            
+            self.scroll_helper.set_scroll_speed(pixels_per_second)
+            self.scroll_helper.set_scroll_delay(self.scroll_delay)
+        
+        # Set target FPS for high-performance scrolling (default 100 FPS)
+        target_fps = self.global_config.get('target_fps') or self.global_config.get('scroll_target_fps', 100)
+        if hasattr(self.scroll_helper, 'set_target_fps'):
+            self.scroll_helper.set_target_fps(target_fps)
+            self.logger.info(f"Target FPS set to: {target_fps} FPS")
+        else:
+            # Fallback for older ScrollHelper versions - set target_fps directly
+            self.scroll_helper.target_fps = max(30.0, min(200.0, target_fps))
+            self.scroll_helper.frame_time_target = 1.0 / self.scroll_helper.target_fps
+            self.logger.debug(f"Target FPS set to: {self.scroll_helper.target_fps} FPS (using fallback method)")
+        
         self.scroll_helper.set_dynamic_duration_settings(
             enabled=self.dynamic_duration_enabled,
             min_duration=self.min_duration,
@@ -101,7 +158,16 @@ class LeaderboardPlugin(BasePlugin):
         self.logger.info("Leaderboard plugin initialized")
         self.logger.info(f"Enabled leagues: {enabled_leagues}")
         self.logger.info(f"Display dimensions: {self.display_width}x{self.display_height}")
-        self.logger.info(f"Scroll speed: {self.scroll_speed} px/s")
+        # Log scroll speed (check if frame-based mode was used)
+        if hasattr(self.scroll_helper, 'frame_based_scrolling') and self.scroll_helper.frame_based_scrolling:
+            pixels_per_second = self.scroll_speed / self.scroll_delay if self.scroll_delay > 0 else self.scroll_speed * 100
+            self.logger.info(f"Scroll speed: {self.scroll_speed} px/frame, {self.scroll_delay}s delay ({pixels_per_second:.1f} px/s effective)")
+        else:
+            if hasattr(self, 'scroll_pixels_per_second') and self.scroll_pixels_per_second is not None:
+                self.logger.info(f"Scroll speed: {self.scroll_pixels_per_second} px/s")
+            else:
+                pixels_per_second = self.scroll_speed / self.scroll_delay if self.scroll_delay > 0 else self.scroll_speed * 100
+                self.logger.info(f"Scroll speed: {pixels_per_second:.1f} px/s")
         self.logger.info(
             "Dynamic duration settings: enabled=%s, min=%ss, max=%ss, buffer=%.2f, controller_cap=%ss",
             self.dynamic_duration_enabled,
@@ -419,6 +485,43 @@ class LeaderboardPlugin(BasePlugin):
         if self.dynamic_duration_enabled and self.scroll_helper.cached_image:
             return float(self.scroll_helper.get_dynamic_duration())
         return float(self.display_duration)
+    
+    def set_scroll_speed(self, speed: float) -> None:
+        """Set the scroll speed (pixels per frame, 0.5-5.0)."""
+        # Clamp to valid range
+        self.scroll_speed = max(0.5, min(5.0, speed))
+        self.logger.info(f"Scroll speed set to: {self.scroll_speed} pixels/frame")
+        
+        # Update ScrollHelper based on current mode
+        if hasattr(self.scroll_helper, 'frame_based_scrolling') and self.scroll_helper.frame_based_scrolling:
+            # Frame-based mode: set pixels per frame directly
+            self.scroll_helper.set_scroll_speed(self.scroll_speed)
+            # Log effective pixels per second
+            pixels_per_second = self.scroll_speed / self.scroll_delay if self.scroll_delay > 0 else self.scroll_speed * 100
+            self.logger.info(f"Effective scroll speed: {pixels_per_second:.1f} px/s")
+        else:
+            # Time-based mode: convert to pixels per second
+            pixels_per_second = self.scroll_speed / self.scroll_delay if self.scroll_delay > 0 else self.scroll_speed * 100
+            self.scroll_helper.set_scroll_speed(pixels_per_second)
+    
+    def set_scroll_delay(self, delay: float) -> None:
+        """Set the scroll delay (seconds between frames, 0.001-0.1)."""
+        # Clamp to valid range
+        self.scroll_delay = max(0.001, min(0.1, delay))
+        self.logger.info(f"Scroll delay set to: {self.scroll_delay}s")
+        
+        # Update ScrollHelper
+        self.scroll_helper.set_scroll_delay(self.scroll_delay)
+        
+        # Recalculate pixels per second if in time-based mode
+        if hasattr(self.scroll_helper, 'frame_based_scrolling') and self.scroll_helper.frame_based_scrolling:
+            # Frame-based mode: log effective pixels per second
+            pixels_per_second = self.scroll_speed / self.scroll_delay if self.scroll_delay > 0 else self.scroll_speed * 100
+            self.logger.info(f"Effective scroll speed: {pixels_per_second:.1f} px/s ({self.scroll_speed} px/frame at {1.0/self.scroll_delay:.0f} FPS)")
+        else:
+            # Time-based mode: recalculate pixels per second
+            pixels_per_second = self.scroll_speed / self.scroll_delay if self.scroll_delay > 0 else self.scroll_speed * 100
+            self.scroll_helper.set_scroll_speed(pixels_per_second)
     
     def get_info(self) -> Dict[str, Any]:
         """Return plugin info for web UI."""

@@ -146,7 +146,28 @@
           "default": 15.0,
           "minimum": 5.0,
           "maximum": 50.0,
-          "description": "Scroll speed in pixels per second"
+          "description": "[Deprecated] Scroll speed in pixels per second. Use display.scroll_speed and display.scroll_delay for finer control"
+        },
+        "display": {
+          "type": "object",
+          "description": "Display and scrolling settings",
+          "properties": {
+            "scroll_speed": {
+              "type": "number",
+              "description": "Scrolling speed in pixels per frame",
+              "minimum": 0.5,
+              "maximum": 5.0,
+              "default": 1.0
+            },
+            "scroll_delay": {
+              "type": "number",
+              "description": "Delay between scroll steps in seconds",
+              "minimum": 0.001,
+              "maximum": 0.1,
+              "default": 0.01
+            }
+          },
+          "additionalProperties": false
         },
         "scroll_target_fps": {
           "type": "number",
