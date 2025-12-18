@@ -480,6 +480,46 @@ class LeaderboardPlugin(BasePlugin):
             return True
         return self._cycle_complete
     
+    def get_cycle_duration(self, display_mode: str = None) -> Optional[float]:
+        """
+        Calculate the expected cycle duration based on content width and scroll speed.
+        
+        This implements dynamic duration scaling where:
+        - Duration is calculated from total scroll distance and scroll speed
+        - Includes buffer time for smooth cycling
+        - Respects min/max duration limits
+        
+        Args:
+            display_mode: The display mode (unused for leaderboard as it has a single mode)
+        
+        Returns:
+            Calculated duration in seconds, or None if dynamic duration is disabled or not available
+        """
+        # display_mode is unused but kept for API consistency with other plugins
+        _ = display_mode
+        if not self.dynamic_duration_enabled:
+            return None
+        
+        # Check if we have a cached image with calculated duration
+        if self.scroll_helper and self.scroll_helper.cached_image:
+            try:
+                dynamic_duration = self.scroll_helper.get_dynamic_duration()
+                if dynamic_duration and dynamic_duration > 0:
+                    self.logger.debug(
+                        "get_cycle_duration() returning calculated duration: %.1fs",
+                        dynamic_duration
+                    )
+                    return float(dynamic_duration)
+            except Exception as e:
+                self.logger.warning(
+                    "Error getting dynamic duration from scroll helper: %s",
+                    e
+                )
+        
+        # If no cached image yet, return None (will be calculated when image is created)
+        self.logger.debug("get_cycle_duration() returning None (no cached image yet)")
+        return None
+    
     def get_display_duration(self) -> float:
         """Get display duration from config or dynamic calculation."""
         if self.dynamic_duration_enabled and self.scroll_helper.cached_image:
