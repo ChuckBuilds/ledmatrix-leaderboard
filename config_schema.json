@@ -16,11 +16,6 @@
       "maximum": 300,
       "description": "How long to display the leaderboard in seconds"
     },
-    "live_priority": {
-      "type": "boolean",
-      "default": false,
-      "description": "Enable live priority takeover when plugin has live content"
-    },
     "update_interval": {
       "type": "integer",
       "default": 3600,
@@ -178,13 +173,19 @@
         },
         "scroll_mode": {
           "type": "string",
-          "enum": ["one_shot", "continuous"],
+          "enum": [
+            "one_shot",
+            "continuous"
+          ],
           "default": "one_shot",
           "description": "Scrolling mode"
         },
         "scroll_direction": {
           "type": "string",
-          "enum": ["left", "right"],
+          "enum": [
+            "left",
+            "right"
+          ],
           "default": "left",
           "description": "Scroll direction"
         },
@@ -352,5 +353,7 @@
     }
   },
   "additionalProperties": false,
-  "required": ["enabled"]
+  "required": [
+    "enabled"
+  ]
 }
