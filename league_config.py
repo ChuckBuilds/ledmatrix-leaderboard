@@ -118,8 +118,10 @@ class LeagueConfig:
                 'logo_dir': 'assets/sports/ncaa_logos',
                 'league_logo': 'assets/sports/ncaa_logos/ncaam.png',
                 'teams_url': 'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams',
+                'rankings_url': 'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/rankings',
                 'enabled': self.enabled_sports.get('ncaam_basketball', {}).get('enabled', get_enabled_default('ncaam_basketball')),
-                'top_teams': self.enabled_sports.get('ncaam_basketball', {}).get('top_teams', 25)
+                'top_teams': self.enabled_sports.get('ncaam_basketball', {}).get('top_teams', 25),
+                'show_ranking': self.enabled_sports.get('ncaam_basketball', {}).get('show_ranking', True)
             },
             'ncaaw_basketball': {
                 'sport': 'basketball',
@@ -127,8 +129,10 @@ class LeagueConfig:
                 'logo_dir': 'assets/sports/ncaa_womens_logos',
                 'league_logo': 'assets/sports/ncaa_womens_logos/ncaaw.png',
                 'teams_url': 'https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/teams',
+                'rankings_url': 'https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/rankings',
                 'enabled': self.enabled_sports.get('ncaaw_basketball', {}).get('enabled', get_enabled_default('ncaaw_basketball')),
-                'top_teams': self.enabled_sports.get('ncaaw_basketball', {}).get('top_teams', 25)
+                'top_teams': self.enabled_sports.get('ncaaw_basketball', {}).get('top_teams', 25),
+                'show_ranking': self.enabled_sports.get('ncaaw_basketball', {}).get('show_ranking', True)
             },
             'ncaa_baseball': {
                 'sport': 'baseball',
