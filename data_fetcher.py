@@ -58,15 +58,20 @@ class DataFetcher:
         # Special handling for college football - use rankings endpoint
         if league_key == 'college-football':
             return self._fetch_ncaa_fb_rankings(league_config)
-        
+
         # Special handling for mens-college-hockey - use rankings endpoint
         if league_key == 'mens-college-hockey':
             return self._fetch_ncaam_hockey_rankings(league_config)
-        
+
+        # Special handling for college basketball - use rankings endpoint
+        # ESPN college basketball API requires numeric team IDs, not abbreviations
+        if league_key in ['mens-college-basketball', 'womens-college-basketball']:
+            return self._fetch_ncaa_basketball_rankings(league_config)
+
         # Use standings endpoint for NFL, MLB, NHL, and NCAA Baseball
         if league_key in ['nfl', 'mlb', 'nhl', 'college-baseball']:
             return self._fetch_standings_data(league_config)
-        
+
         # For NBA and other leagues, use teams endpoint
         return self._fetch_teams_data(league_config)
     
@@ -236,7 +241,98 @@ class DataFetcher:
         except Exception as e:
             self.logger.error(f"Error fetching rankings for {league_key}: {e}")
             return []
-    
+
+    def _fetch_ncaa_basketball_rankings(self, league_config: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Fetch NCAA Basketball rankings from ESPN API using the rankings endpoint."""
+        league_key = league_config['league']
+        cache_key = f"leaderboard_{league_key}_rankings"
+
+        cached_data = self.cache_manager.get_cached_data_with_strategy(cache_key, 'leaderboard')
+        if cached_data:
+            self.logger.info(f"Using cached rankings data for {league_key}")
+            return cached_data.get('standings', [])
+
+        try:
+            self.logger.info(f"Fetching fresh rankings data for {league_key}")
+            sport = league_config['sport']
+            rankings_url = f"https://site.api.espn.com/apis/site/v2/sports/{sport}/{league_key}/rankings"
+
+            response = requests.get(rankings_url, timeout=self.request_timeout)
+            response.raise_for_status()
+            data = response.json()
+
+            increment_api_counter('sports', 1)
+
+            rankings_data = data.get('rankings', [])
+            if not rankings_data:
+                self.logger.warning(f"No rankings data found for {league_key}")
+                return []
+
+            # Prefer AP Top 25, but fall back to first ranking if not found
+            selected_ranking = None
+            ranking_name = 'Unknown'
+
+            # Look for AP Top 25 specifically
+            for ranking in rankings_data:
+                name = ranking.get('name', '').lower()
+                ranking_type = ranking.get('type', '').lower()
+                if ('ap' in name and 'top' in name) or ranking_type == 'ap':
+                    selected_ranking = ranking
+                    ranking_name = ranking.get('name', 'AP Top 25')
+                    self.logger.info(f"Found AP Top 25 ranking: {ranking_name}")
+                    break
+
+            # Fall back to first ranking if AP Top 25 not found
+            if not selected_ranking:
+                selected_ranking = rankings_data[0]
+                ranking_name = selected_ranking.get('name', 'Unknown')
+                self.logger.warning(f"AP Top 25 not found, using first available ranking: {ranking_name}")
+
+            teams = selected_ranking.get('ranks', [])
+
+            self.logger.info(f"Using ranking: {ranking_name}, found {len(teams)} teams")
+
+            standings = []
+            for team_data in teams:
+                team_info = team_data.get('team', {})
+                team_name = team_info.get('name', 'Unknown')
+                team_id = team_info.get('id')
+                team_abbr = team_info.get('abbreviation', 'Unknown')
+                current_rank = team_data.get('current', 0)
+                record_summary = team_data.get('recordSummary', '0-0')
+
+                wins, losses, ties, win_percentage = self._parse_record(record_summary)
+
+                standings.append({
+                    'name': team_name,
+                    'id': team_id,
+                    'abbreviation': team_abbr,
+                    'rank': current_rank,
+                    'wins': wins,
+                    'losses': losses,
+                    'ties': ties,
+                    'win_percentage': win_percentage,
+                    'record_summary': record_summary,
+                    'ranking_name': ranking_name
+                })
+
+            top_teams = standings[:league_config.get('top_teams', 25)]
+
+            cache_data = {
+                'standings': top_teams,
+                'timestamp': time.time(),
+                'league': league_key,
+                'ranking_name': ranking_name
+            }
+            self.cache_manager.save_cache(cache_key, cache_data)
+
+            self.logger.info(f"Fetched and cached {len(top_teams)} teams for {league_key}")
+            return top_teams
+
+        except Exception as e:
+            self.logger.error(f"Error fetching rankings for {league_key}: {e}")
+            return []
+
     def _fetch_standings_data(self, league_config: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Fetch standings data from ESPN API using the standings endpoint."""
         league_key = league_config['league']
