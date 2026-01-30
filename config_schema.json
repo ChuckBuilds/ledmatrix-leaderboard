@@ -294,7 +294,7 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "default": false,
+              "default": true,
               "description": "Enable NHL standings"
             },
             "top_teams": {
